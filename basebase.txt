@@ -1,0 +1,567 @@
+-- =============================================================
+-- 🗄️  SCHEMA: PASTELERÍA E-COMMERCE (MEJORADO)
+-- =============================================================
+
+-- =============================================================
+-- 1️⃣ TABLAS BASE
+-- =============================================================
+
+CREATE TABLE roles (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    nombre text UNIQUE NOT NULL
+);
+
+CREATE TABLE categorias (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    nombre text UNIQUE NOT NULL,
+    descripcion text
+);
+
+CREATE TABLE personalizaciones (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    nombre text NOT NULL,
+
+    -- ❌ Se eliminó 'archivo'
+    tipo text NOT NULL DEFAULT 'texto'
+        CHECK (tipo IN ('texto', 'seleccion', 'numero')),
+
+    requerido boolean DEFAULT FALSE
+);
+
+CREATE TABLE promociones (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    nombre text NOT NULL,
+    descuento NUMERIC(5,2) NOT NULL
+        CHECK (descuento >= 0 AND descuento <= 100),
+    fecha_inicio timestamp,
+    fecha_fin timestamp,
+    activo boolean DEFAULT true, 
+
+    CHECK (
+        fecha_fin IS NULL
+        OR fecha_fin >= fecha_inicio
+    )
+);
+
+-- =============================================================
+-- 2️⃣ USUARIOS
+-- =============================================================
+
+CREATE TABLE usuarios (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    nombre text NOT NULL,
+    email text UNIQUE NOT NULL
+        CHECK (email LIKE '%@%'),
+    password_hash text NOT NULL,
+    telefono text,
+    rol_id bigint NOT NULL,
+    created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (rol_id)
+        REFERENCES roles(id)
+        ON DELETE RESTRICT
+);
+
+CREATE TABLE direcciones (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    usuario_id bigint NOT NULL,
+    calle text NOT NULL,
+    distrito text,
+    ciudad text NOT NULL,
+    codigo_postal text,
+    referencia text,
+    es_principal boolean DEFAULT false,
+    created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (usuario_id)
+        REFERENCES usuarios(id)
+        ON DELETE CASCADE
+);
+
+-- =============================================================
+-- 3️⃣ PRODUCTOS
+-- =============================================================
+
+CREATE TABLE productos (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    nombre text NOT NULL,
+    descripcion text,
+    precio NUMERIC(12,2) NOT NULL
+        CHECK (precio >= 0),
+    stock integer DEFAULT 0
+        CHECK (stock >= 0),
+    categoria_id bigint,
+    imagen_url text,
+    activo boolean DEFAULT true,
+    created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (categoria_id)
+        REFERENCES categorias(id)
+        ON DELETE SET NULL
+);
+
+CREATE TABLE opciones_personalizacion (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    personalizacion_id bigint NOT NULL,
+    valor text NOT NULL,
+    precio_extra NUMERIC(10,2) DEFAULT 0
+        CHECK (precio_extra >= 0),
+
+    FOREIGN KEY (personalizacion_id)
+        REFERENCES personalizaciones(id)
+        ON DELETE CASCADE
+);
+
+CREATE TABLE producto_personalizacion (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    producto_id bigint NOT NULL,
+    personalizacion_id bigint NOT NULL,
+
+    UNIQUE(producto_id, personalizacion_id),
+
+    FOREIGN KEY (producto_id)
+        REFERENCES productos(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (personalizacion_id)
+        REFERENCES personalizaciones(id)
+        ON DELETE CASCADE
+);
+
+CREATE TABLE producto_promocion (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    producto_id bigint NOT NULL,
+    promo_id bigint NOT NULL,
+
+    UNIQUE(producto_id, promo_id),
+
+    FOREIGN KEY (producto_id)
+        REFERENCES productos(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (promo_id)
+        REFERENCES promociones(id)
+        ON DELETE CASCADE
+);
+
+-- =============================================================
+-- 4️⃣ CARRITO
+-- =============================================================
+
+CREATE TABLE carritos (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    usuario_id bigint UNIQUE,
+    created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (usuario_id)
+        REFERENCES usuarios(id)
+        ON DELETE CASCADE
+);
+
+CREATE TABLE carrito_items (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    carrito_id bigint NOT NULL,
+    producto_id bigint NOT NULL,
+    cantidad integer NOT NULL
+        CHECK (cantidad > 0),
+
+    UNIQUE(carrito_id, producto_id),
+
+    FOREIGN KEY (carrito_id)
+        REFERENCES carritos(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (producto_id)
+        REFERENCES productos(id)
+        ON DELETE CASCADE
+);
+
+-- =============================================================
+-- 5️⃣ PEDIDOS
+-- =============================================================
+
+CREATE TABLE pedidos (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    usuario_id bigint NOT NULL,
+    direccion_id bigint NOT NULL,
+    fecha timestamp DEFAULT CURRENT_TIMESTAMP,
+
+    estado text DEFAULT 'pendiente'
+        CHECK (
+            estado IN (
+                'pendiente',
+                'confirmado',
+                'en_preparacion',
+                'en_camino',
+                'entregado'
+            )
+        ),
+
+    total NUMERIC(12,2) NOT NULL
+        CHECK (total >= 0),
+
+    FOREIGN KEY (usuario_id)
+        REFERENCES usuarios(id)
+        ON DELETE RESTRICT,
+
+    FOREIGN KEY (direccion_id)
+        REFERENCES direcciones(id)
+        ON DELETE RESTRICT
+);
+
+CREATE TABLE detalle_pedido (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    pedido_id bigint NOT NULL,
+    producto_id bigint NOT NULL,
+
+    cantidad integer NOT NULL
+        CHECK (cantidad > 0),
+
+    precio_unitario NUMERIC(12,2) NOT NULL
+        CHECK (precio_unitario >= 0),
+
+    FOREIGN KEY (pedido_id)
+        REFERENCES pedidos(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (producto_id)
+        REFERENCES productos(id)
+        ON DELETE RESTRICT
+);
+
+CREATE TABLE detalle_personalizacion (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    detalle_pedido_id bigint NOT NULL,
+    personalizacion_id bigint NOT NULL,
+    opcion_id bigint,
+
+    -- ✅ Solo texto, ya no imágenes/archivos
+    valor_texto text,
+
+    FOREIGN KEY (detalle_pedido_id)
+        REFERENCES detalle_pedido(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (personalizacion_id)
+        REFERENCES personalizaciones(id)
+        ON DELETE RESTRICT,
+
+    FOREIGN KEY (opcion_id)
+        REFERENCES opciones_personalizacion(id)
+        ON DELETE SET NULL
+);
+
+CREATE TABLE pagos (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    pedido_id bigint NOT NULL,
+
+    monto NUMERIC(12,2) NOT NULL
+        CHECK (monto >= 0),
+
+    metodo_pago text NOT NULL
+        CHECK (
+            metodo_pago IN (
+                'efectivo',
+                'tarjeta',
+                'yape',
+                'plin'
+            )
+        ),
+
+    estado text DEFAULT 'pendiente'
+        CHECK (
+            estado IN (
+                'pendiente',
+                'completado',
+                'fallido',
+                'reembolsado'
+            )
+        ),
+
+    fecha_pago timestamp DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (pedido_id)
+        REFERENCES pedidos(id)
+        ON DELETE CASCADE
+);
+
+CREATE TABLE historial_pedidos (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    pedido_id bigint NOT NULL,
+
+    estado_anterior text
+        CHECK (
+            estado_anterior IS NULL
+            OR estado_anterior IN (
+                'pendiente',
+                'confirmado',
+                'en_preparacion',
+                'en_camino',
+                'entregado'
+            )
+        ),
+
+    estado_nuevo text NOT NULL
+        CHECK (
+            estado_nuevo IN (
+                'pendiente',
+                'confirmado',
+                'en_preparacion',
+                'en_camino',
+                'entregado'
+            )
+        ),
+
+    fecha_cambio timestamp DEFAULT CURRENT_TIMESTAMP,
+    usuario_id bigint,
+    nota text,
+
+    FOREIGN KEY (pedido_id)
+        REFERENCES pedidos(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (usuario_id)
+        REFERENCES usuarios(id)
+        ON DELETE SET NULL
+);
+
+-- =============================================================
+-- 6️⃣ NOTIFICACIONES Y RESEÑAS
+-- =============================================================
+
+CREATE TABLE notificaciones (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    usuario_id bigint NOT NULL,
+    titulo text,
+    mensaje text NOT NULL,
+    tipo text DEFAULT 'info',
+    referencia_id bigint,
+    leido boolean DEFAULT false,
+    created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (usuario_id)
+        REFERENCES usuarios(id)
+        ON DELETE CASCADE
+);
+
+CREATE TABLE resenas (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    usuario_id bigint NOT NULL,
+    producto_id bigint NOT NULL,
+    comentario text,
+
+    calificacion integer NOT NULL
+        CHECK (calificacion BETWEEN 1 AND 5),
+
+    fecha timestamp DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE(usuario_id, producto_id),
+
+    FOREIGN KEY (usuario_id)
+        REFERENCES usuarios(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (producto_id)
+        REFERENCES productos(id)
+        ON DELETE CASCADE
+);
+
+-- =============================================================
+-- 7️⃣ ÍNDICES
+-- =============================================================
+
+CREATE INDEX idx_productos_categoria
+    ON productos(categoria_id);
+
+CREATE INDEX idx_pedidos_usuario
+    ON pedidos(usuario_id);
+
+CREATE INDEX idx_pedidos_estado
+    ON pedidos(estado);
+
+CREATE INDEX idx_detalle_pedido_pedido
+    ON detalle_pedido(pedido_id);
+
+CREATE INDEX idx_notificaciones_usuario
+    ON notificaciones(usuario_id);
+
+CREATE INDEX idx_pagos_pedido
+    ON pagos(pedido_id);
+
+-- =============================================================
+-- 8️⃣ TRIGGER DE VALIDACIÓN DE ESTADOS
+-- =============================================================
+
+CREATE OR REPLACE FUNCTION validar_transicion_estado_pedido()
+RETURNS TRIGGER AS
+$$
+BEGIN
+
+    IF NEW.estado_anterior IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    IF NOT (
+        (NEW.estado_anterior = 'pendiente' AND NEW.estado_nuevo = 'confirmado')
+        OR
+        (NEW.estado_anterior = 'confirmado' AND NEW.estado_nuevo = 'en_preparacion')
+        OR
+        (NEW.estado_anterior = 'en_preparacion' AND NEW.estado_nuevo = 'en_camino')
+        OR
+        (NEW.estado_anterior = 'en_camino' AND NEW.estado_nuevo = 'entregado')
+    ) THEN
+
+        RAISE EXCEPTION
+            'Transición inválida: de "%" a "%"',
+            NEW.estado_anterior,
+            NEW.estado_nuevo;
+
+    END IF;
+
+    RETURN NEW;
+
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_validar_transicion_pedido
+BEFORE INSERT ON historial_pedidos
+FOR EACH ROW
+EXECUTE FUNCTION validar_transicion_estado_pedido();
+
+-- Insertar roles
+INSERT INTO roles (nombre) VALUES ('cliente'), ('admin');
+
+
+
+-- Insertar usuarios
+INSERT INTO usuarios (nombre, email, password_hash, rol_id) VALUES
+('Cliente Ejemplo', 'cliente@example.com', 'hashed_password_cliente', (SELECT id FROM roles WHERE nombre = 'cliente')),
+('Administrador Ejemplo', 'admin@example.com', 'hashed_password_admin', (SELECT id FROM roles WHERE nombre = 'admin'));
+
+INSERT INTO categorias (nombre) VALUES
+('almuerzos'),
+('desayunos'),
+('bebidas'),
+('tortas'),
+('postres'),
+('bocaditos');
+
+INSERT INTO productos (nombre, descripcion, precio, stock, categoria_id) VALUES
+
+(
+'Torta Tralalero Tralala',
+'Torta para ocasiones especiales.',
+80.00,
+10,
+(SELECT id FROM categorias WHERE nombre = 'tortas')
+),
+
+(
+'Torta de vainilla con frutas',
+'Bizcocho de vainilla decorado con frutas frescas.',
+90.00,
+8,
+(SELECT id FROM categorias WHERE nombre = 'tortas')
+),
+
+(
+'Cheesecake de maracuyá',
+'Postre frío con base de galleta y crema de maracuyá.',
+25.00,
+15,
+(SELECT id FROM categorias WHERE nombre = 'postres')
+),
+
+(
+'Brownies artesanales',
+'Brownies de chocolate con nueces.',
+5.00,
+50,
+(SELECT id FROM categorias WHERE nombre = 'postres')
+),
+
+(
+'Desayuno gourmet',
+'Caja con jugo, sándwich, fruta y postre.',
+45.00,
+12,
+(SELECT id FROM categorias WHERE nombre = 'desayunos')
+),
+
+(
+'Almuerzo ejecutivo',
+'Plato principal + bebida + postre.',
+30.00,
+20,
+(SELECT id FROM categorias WHERE nombre = 'almuerzos')
+),
+
+(
+'Jugo natural de fresa',
+'Bebida refrescante elaborada con fruta fresca.',
+8.00,
+30,
+(SELECT id FROM categorias WHERE nombre = 'bebidas')
+),
+
+(
+'Bocaditos salados surtidos',
+'Mini empanadas, tequeños y croquetas.',
+60.00,
+5,
+(SELECT id FROM categorias WHERE nombre = 'bocaditos')
+);
+
+INSERT INTO personalizaciones (nombre, tipo, requerido)
+VALUES
+('Mensaje', 'texto', false),
+('Sabor del cake', 'seleccion', true),
+('Relleno', 'seleccion', true),
+('Tamaño', 'seleccion', true);
+-- Sabores
+INSERT INTO opciones_personalizacion (personalizacion_id, valor)
+VALUES
+((SELECT id FROM personalizaciones WHERE nombre='Sabor del cake'),'Chocolate'),
+((SELECT id FROM personalizaciones WHERE nombre='Sabor del cake'),'Vainilla');
+
+-- Rellenos
+INSERT INTO opciones_personalizacion (personalizacion_id, valor)
+VALUES
+((SELECT id FROM personalizaciones WHERE nombre='Relleno'),'Manjar'),
+((SELECT id FROM personalizaciones WHERE nombre='Relleno'),'Fresa'),
+((SELECT id FROM personalizaciones WHERE nombre='Relleno'),'Oreo');
+
+-- Tamaños
+INSERT INTO opciones_personalizacion (personalizacion_id, valor)
+VALUES
+((SELECT id FROM personalizaciones WHERE nombre='Tamaño'),'15 porciones'),
+((SELECT id FROM personalizaciones WHERE nombre='Tamaño'),'20 porciones'),
+((SELECT id FROM personalizaciones WHERE nombre='Tamaño'),'30 porciones');
+-- Torta Tralalero Tralala
+INSERT INTO producto_personalizacion (producto_id, personalizacion_id)
+VALUES
+(
+ (SELECT id FROM productos WHERE nombre='Torta Tralalero Tralala'),
+ (SELECT id FROM personalizaciones WHERE nombre='Mensaje')
+),
+(
+ (SELECT id FROM productos WHERE nombre='Torta Tralalero Tralala'),
+ (SELECT id FROM personalizaciones WHERE nombre='Sabor del cake')
+),
+(
+ (SELECT id FROM productos WHERE nombre='Torta Tralalero Tralala'),
+ (SELECT id FROM personalizaciones WHERE nombre='Relleno')
+),
+(
+ (SELECT id FROM productos WHERE nombre='Torta Tralalero Tralala'),
+ (SELECT id FROM personalizaciones WHERE nombre='Tamaño')
+);
+
+-- Cheesecake de maracuyá
+INSERT INTO producto_personalizacion (producto_id, personalizacion_id)
+VALUES
+(
+ (SELECT id FROM productos WHERE nombre='Cheesecake de maracuyá'),
+ (SELECT id FROM personalizaciones WHERE nombre='Mensaje')
+);
