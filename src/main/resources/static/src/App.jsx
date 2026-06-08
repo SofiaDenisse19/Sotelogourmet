@@ -1,12 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingBag, Heart, Search, X, Trash2, Menu, MapPin, Clock } from 'lucide-react';
+import { ShoppingBag, Heart, User, X, Trash2, Menu, MapPin, Clock } from 'lucide-react';
 
 // Import views
 import LandingPage from './views/LandingPage';
 import CatalogPage from './views/CatalogPage';
 import ProductDetailPage from './views/ProductDetailPage';
 import FavoritesPage from './views/FavoritesPage';
+import LoginPage from './views/LoginPage';
+import RegisterPage from './views/RegisterPage';
+import AdminLayout from './views/AdminLayout';
+import AdminDashboardPage from './views/AdminDashboardPage';
+import AdminOrdersPage from './views/AdminOrdersPage';
+
+function SectionPlaceholder({ name }) {
+  return (
+    <div className="bg-white p-12 rounded-3xl border border-[#e8dac5]/40 shadow-xs text-center max-w-lg mx-auto my-16 space-y-5 animate-scale-up">
+      <div className="w-16 h-16 bg-[#775a19]/5 text-[#775a19] rounded-full flex items-center justify-center mx-auto text-3xl">🚧</div>
+      <h3 className="font-serif font-black text-xl text-gray-800">Sección en Desarrollo</h3>
+      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{name}</p>
+      <p className="text-sm text-gray-500 leading-relaxed font-semibold">
+        Esta interfaz está siendo adaptada conforme a los requerimientos de Sotelo Gourmet. Estará disponible en la próxima versión del sistema.
+      </p>
+    </div>
+  );
+}
 
 export default function App() {
   const navigate = useNavigate();
@@ -17,6 +35,48 @@ export default function App() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Authentication State
+  const [user, setUser] = useState(null);
+
+  // Fetch Session on startup
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const userData = await res.json();
+          setUser(userData);
+        }
+      } catch (err) {
+        console.error('Error al obtener sesión activa:', err);
+      }
+    };
+    fetchSession();
+  }, []);
+
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+  };
+
+  const handleRegisterSuccess = (userData) => {
+    setUser(userData);
+  };
+
+  const handleLogout = async () => {
+    try {
+      const res = await fetch('/api/auth/logout', { method: 'POST' });
+      if (res.ok) {
+        setUser(null);
+        navigate('/');
+      } else {
+        alert('Error al cerrar sesión en el servidor');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error de conexión al cerrar sesión');
+    }
+  };
 
   // Fetch Data from Supabase API
   useEffect(() => {
@@ -183,6 +243,39 @@ export default function App() {
     );
   }
 
+  if (location.pathname.startsWith('/admin')) {
+    return (
+      <div className="min-h-screen bg-[#fdfaf7]">
+        <Routes>
+          <Route path="/admin/*" element={
+            user && user.rol === 'admin' ? (
+              <AdminLayout user={user} onLogout={handleLogout}>
+                <Routes>
+                  <Route path="dashboard" element={<AdminDashboardPage />} />
+                  <Route path="pedidos" element={<AdminOrdersPage />} />
+                  <Route path="inventario" element={<SectionPlaceholder name="Gestión de Inventario" />} />
+                  <Route path="clientes" element={<SectionPlaceholder name="Gestión de Clientes" />} />
+                  <Route path="promociones" element={<SectionPlaceholder name="Gestión de Promociones" />} />
+                  <Route path="ajustes" element={<SectionPlaceholder name="Ajustes del Sistema" />} />
+                  <Route path="*" element={<AdminDashboardPage />} />
+                </Routes>
+              </AdminLayout>
+            ) : (
+              <div className="min-h-screen flex items-center justify-center p-4 bg-[#fdfaf7]">
+                <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-red-100 text-center space-y-4 animate-scale-up">
+                  <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto text-3xl">🚫</div>
+                  <h2 className="text-xl font-serif font-bold text-red-600">Acceso Denegado</h2>
+                  <p className="text-sm text-gray-500">Esta zona es de uso exclusivo para el personal de administración de Sotelo Gourmet.</p>
+                  <button onClick={() => navigate('/')} className="w-full py-3 bg-[#775a19] hover:bg-[#5e4713] text-white font-bold rounded-xl transition-all shadow-md">Volver al Inicio</button>
+                </div>
+              </div>
+            )
+          } />
+        </Routes>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#fdfaf7] text-[#1c1c19]">
       
@@ -236,14 +329,47 @@ export default function App() {
           {/* Action Buttons */}
           <div className="flex items-center gap-4">
             
-            {/* Search Toggle */}
-            <Link 
-              to="/catalogo"
-              className="p-2 text-[#494551] hover:text-[#775a19] hover:bg-[#775a19]/5 rounded-xl transition-all"
-              title="Buscar en Catálogo"
-            >
-              <Search className="w-5 h-5" />
-            </Link>
+            {/* Iniciar Sesión / Cuenta Icon (replaces Search) */}
+            {user ? (
+              <div className="relative group">
+                <button 
+                  className="p-2 text-[#494551] hover:text-[#775a19] hover:bg-[#775a19]/5 rounded-xl transition-all flex items-center cursor-pointer select-none"
+                  title="Mi Cuenta"
+                >
+                  <User className="w-5 h-5" />
+                </button>
+                <div className="absolute left-0 mt-1 w-48 bg-white border border-gray-100 rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-250 z-50 py-1">
+                  <div className="px-4 py-2 text-[10px] border-b border-gray-50 text-gray-400 font-bold uppercase tracking-wider">
+                    {user.rol}
+                  </div>
+                  <div className="px-4 py-1.5 text-xs text-gray-600 truncate">
+                    {user.email}
+                  </div>
+                  {user.rol === 'admin' && (
+                    <Link 
+                      to="/admin/dashboard"
+                      className="block px-4 py-2 text-xs text-[#775a19] hover:bg-[#775a19]/5 transition-colors font-bold border-t border-gray-50 cursor-pointer"
+                    >
+                      PANEL DE CONTROL
+                    </Link>
+                  )}
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors font-bold border-t border-gray-50 cursor-pointer"
+                  >
+                    CERRAR SESIÓN
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <Link 
+                to="/login"
+                className="p-2 text-[#494551] hover:text-[#775a19] hover:bg-[#775a19]/5 rounded-xl transition-all"
+                title="Iniciar Sesión / Registrarse"
+              >
+                <User className="w-5 h-5" />
+              </Link>
+            )}
 
             {/* Favorites Icon & Badge */}
             <Link 
@@ -273,6 +399,13 @@ export default function App() {
               )}
             </button>
 
+            {/* User welcome message */}
+            {user && (
+              <span className="hidden sm:inline-block text-sm font-semibold text-[#494551] select-none ml-1">
+                Hola, {user.nombre.split(' ')[0]}
+              </span>
+            )}
+
             {/* Mobile Nav Toggle */}
             <button 
               onClick={() => setShowMobileNav(!showMobileNav)}
@@ -290,6 +423,15 @@ export default function App() {
             <Link to="/" onClick={() => setShowMobileNav(false)} className="text-left py-2 border-b border-gray-50 hover:text-[#775a19]">Inicio</Link>
             <Link to="/catalogo" onClick={() => setShowMobileNav(false)} className="text-left py-2 border-b border-gray-50 hover:text-[#775a19]">Catálogo</Link>
             <Link to="/catalogo?category=bocaditos" onClick={() => setShowMobileNav(false)} className="text-left py-2 border-b border-gray-50 hover:text-[#775a19]">Salados</Link>
+            {user && user.rol === 'admin' && (
+              <Link 
+                to="/admin/dashboard" 
+                onClick={() => setShowMobileNav(false)} 
+                className="text-left py-2 border-b border-gray-50 text-[#775a19] hover:text-[#5e4713]"
+              >
+                Panel Admin
+              </Link>
+            )}
             <button 
               onClick={() => {
                 setShowMobileNav(false);
@@ -340,6 +482,16 @@ export default function App() {
               toggleFavorite={toggleFavorite} 
               favorites={favorites} 
               addToCart={addToCart}
+            />
+          } />
+          <Route path="/login" element={
+            <LoginPage 
+              onLoginSuccess={handleLoginSuccess}
+            />
+          } />
+          <Route path="/register" element={
+            <RegisterPage 
+              onRegisterSuccess={handleRegisterSuccess}
             />
           } />
         </Routes>

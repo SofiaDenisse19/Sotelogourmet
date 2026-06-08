@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class ViewController {
 
-    @GetMapping({"/", "/catalogo", "/producto/**", "/favoritos"})
+    @GetMapping({"/", "/catalogo", "/producto/**", "/favoritos", "/login", "/register", "/admin/**"})
     public String index() {
         return "index";
     }
