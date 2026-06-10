@@ -87,6 +87,25 @@ export default function AdminOrdersPage() {
     }
   };
 
+  const handleExportExcel = async () => {
+    try {
+      const response = await fetch('/api/admin/pedidos/exportar');
+      if (!response.ok) throw new Error('Error al generar el archivo Excel');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'pedidos_sotelogourmet.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert('Hubo un error al exportar a Excel: ' + err.message);
+    }
+  };
+
   const getStatusStyle = (status) => {
     switch (status.toLowerCase()) {
       case 'pendiente': 
@@ -207,7 +226,7 @@ export default function AdminOrdersPage() {
           </p>
         </div>
         <button
-          onClick={() => alert('Exportación a Excel simulada con éxito.')}
+          onClick={handleExportExcel}
           className="px-4 py-2 border border-[#775a19] text-[#775a19] bg-white hover:bg-[#775a19]/5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">

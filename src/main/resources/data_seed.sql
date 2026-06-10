@@ -1,3 +1,10 @@
+-- Limpiar tablas dependientes de pedidos (para evitar error de clave foránea al borrar productos)
+DELETE FROM historial_pedidos;
+DELETE FROM pagos;
+DELETE FROM detalle_pedido;
+DELETE FROM pedidos;
+DELETE FROM direcciones;
+
 -- Limpiar catálogo existente para evitar duplicados
 DELETE FROM producto_personalizacion;
 DELETE FROM opciones_personalizacion;

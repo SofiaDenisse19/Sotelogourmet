@@ -116,6 +116,57 @@ public class AuthController {
         return ResponseEntity.ok(mapToResponse(usuario));
     }
 
+    @PutMapping("/perfil")
+    public ResponseEntity<?> actualizarPerfil(@RequestBody Map<String, String> body, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "No autenticado"));
+        }
+        Usuario usuario = usuarioRepository.findByEmail(principal.getName()).orElse(null);
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Usuario no encontrado"));
+        }
+
+        String nombre = body.get("nombre");
+        String telefono = body.get("telefono");
+
+        if (nombre == null || nombre.trim().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "El nombre es obligatorio"));
+        }
+
+        usuario.setNombre(nombre);
+        usuario.setTelefono(telefono);
+        usuarioRepository.save(usuario);
+
+        return ResponseEntity.ok(mapToResponse(usuario));
+    }
+
+    @PostMapping("/cambiar-contrasena")
+    public ResponseEntity<?> cambiarContrasena(@RequestBody Map<String, String> body, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "No autenticado"));
+        }
+        Usuario usuario = usuarioRepository.findByEmail(principal.getName()).orElse(null);
+        if (usuario == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Usuario no encontrado"));
+        }
+
+        String currentPassword = body.get("currentPassword");
+        String newPassword = body.get("newPassword");
+
+        if (currentPassword == null || newPassword == null || newPassword.trim().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Faltan campos obligatorios"));
+        }
+
+        if (!passwordEncoder.matches(currentPassword, usuario.getPasswordHash())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "La contraseña actual es incorrecta"));
+        }
+
+        usuario.setPasswordHash(passwordEncoder.encode(newPassword));
+        usuarioRepository.save(usuario);
+
+        return ResponseEntity.ok(Map.of("message", "Contraseña actualizada exitosamente"));
+    }
+
     private UsuarioResponseDto mapToResponse(Usuario usuario) {
         return UsuarioResponseDto.builder()
                 .id(usuario.getId())

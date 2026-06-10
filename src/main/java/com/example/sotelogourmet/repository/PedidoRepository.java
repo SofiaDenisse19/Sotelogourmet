@@ -13,6 +13,8 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     
     List<Pedido> findAllByOrderByFechaDesc();
 
+    List<Pedido> findByUsuarioIdOrderByFechaDesc(Long usuarioId);
+
     @Query("SELECT SUM(p.total) FROM Pedido p")
     BigDecimal sumTotalSales();
 

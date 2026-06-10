@@ -12,6 +12,10 @@ import RegisterPage from './views/RegisterPage';
 import AdminLayout from './views/AdminLayout';
 import AdminDashboardPage from './views/AdminDashboardPage';
 import AdminOrdersPage from './views/AdminOrdersPage';
+import CheckoutPage from './views/CheckoutPage';
+import UserProfilePage from './views/UserProfilePage';
+import UserOrdersPage from './views/UserOrdersPage';
+import StoresPage from './views/StoresPage';
 
 function SectionPlaceholder({ name }) {
   return (
@@ -132,10 +136,7 @@ export default function App() {
   });
 
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
-  const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState('tarjeta');
-  const [checkoutAddress, setCheckoutAddress] = useState('Av. Larco 456, Miraflores');
-  const [checkoutNotes, setCheckoutNotes] = useState('');
+  const [showLoginPromptModal, setShowLoginPromptModal] = useState(false);
   const [showMobileNav, setShowMobileNav] = useState(false);
   // Persistence
   useEffect(() => {
@@ -210,14 +211,7 @@ export default function App() {
   const cartSubtotal = cart.reduce((sum, item) => sum + (item.precioUnitario * item.cantidad), 0);
   const shippingCost = cartSubtotal > 150 ? 0 : (cartSubtotal > 0 ? 10 : 0);
   const cartTotal = cartSubtotal + shippingCost;
-
-  // Simulate final checkout order
-  const handlePlaceOrder = (e) => {
-    e.preventDefault();
-    setShowCheckoutModal(false);
-    setCart([]);
-    alert(`¡Gracias por tu compra! Tu pedido en Sotelo Gourmet ha sido recibido y está en preparación (Pago: ${checkoutPaymentMethod.toUpperCase()}).`);
-  };
+  const clearCart = () => setCart([]);
 
   if (loading) {
     return (
@@ -308,10 +302,10 @@ export default function App() {
               Catálogo
             </Link>
             <Link 
-              to="/catalogo?category=bocaditos"
-              className={`hover:text-[#775a19] transition-colors ${location.search.includes('category=bocaditos') ? 'text-[#775a19]' : ''}`}
+              to="/tiendas"
+              className={`hover:text-[#775a19] transition-colors ${location.pathname === '/tiendas' ? 'text-[#775a19]' : ''}`}
             >
-              Salados
+              Tiendas
             </Link>
             <button 
               onClick={() => {
@@ -342,9 +336,21 @@ export default function App() {
                   <div className="px-4 py-2 text-[10px] border-b border-gray-50 text-gray-400 font-bold uppercase tracking-wider">
                     {user.rol}
                   </div>
-                  <div className="px-4 py-1.5 text-xs text-gray-600 truncate">
+                  <div className="px-4 py-1.5 text-xs text-gray-600 truncate border-b border-gray-50">
                     {user.email}
                   </div>
+                  <Link 
+                    to="/perfil"
+                    className="block px-4 py-2 text-xs text-gray-700 hover:bg-[#775a19]/5 transition-colors font-bold cursor-pointer"
+                  >
+                    MI PERFIL
+                  </Link>
+                  <Link 
+                    to="/pedidos"
+                    className="block px-4 py-2 text-xs text-gray-700 hover:bg-[#775a19]/5 transition-colors font-bold border-t border-gray-50 cursor-pointer"
+                  >
+                    MIS PEDIDOS
+                  </Link>
                   {user.rol === 'admin' && (
                     <Link 
                       to="/admin/dashboard"
@@ -422,7 +428,7 @@ export default function App() {
           <div className="md:hidden bg-white border-b border-gray-100 py-4 px-6 flex flex-col gap-4 text-sm font-semibold uppercase tracking-wider text-[#494551]">
             <Link to="/" onClick={() => setShowMobileNav(false)} className="text-left py-2 border-b border-gray-50 hover:text-[#775a19]">Inicio</Link>
             <Link to="/catalogo" onClick={() => setShowMobileNav(false)} className="text-left py-2 border-b border-gray-50 hover:text-[#775a19]">Catálogo</Link>
-            <Link to="/catalogo?category=bocaditos" onClick={() => setShowMobileNav(false)} className="text-left py-2 border-b border-gray-50 hover:text-[#775a19]">Salados</Link>
+            <Link to="/tiendas" onClick={() => setShowMobileNav(false)} className="text-left py-2 border-b border-gray-50 hover:text-[#775a19]">Tiendas</Link>
             {user && user.rol === 'admin' && (
               <Link 
                 to="/admin/dashboard" 
@@ -446,7 +452,7 @@ export default function App() {
             </button>
           </div>
         )}
-      </header>
+        </header>
 
       {/* MAIN CONTENT VIEW CONTAINER */}
       <main className="flex-1 w-full bg-[#fdfaf7] animate-fade-in">
@@ -494,81 +500,126 @@ export default function App() {
               onRegisterSuccess={handleRegisterSuccess}
             />
           } />
+          <Route path="/checkout" element={
+            <CheckoutPage 
+              cart={cart}
+              updateCartQty={updateCartQty}
+              removeCartItem={removeCartItem}
+              cartSubtotal={cartSubtotal}
+              shippingCost={shippingCost}
+              cartTotal={cartTotal}
+              clearCart={clearCart}
+              user={user}
+              addToCart={addToCart}
+              products={products}
+            />
+          } />
+          <Route path="/perfil" element={
+            <UserProfilePage 
+              user={user}
+              onUpdateUser={(updated) => setUser(updated)}
+            />
+          } />
+          <Route path="/pedidos" element={
+            <UserOrdersPage 
+              user={user}
+            />
+          } />
+          <Route path="/tiendas" element={
+            <StoresPage />
+          } />
         </Routes>
       </main>
 
-      {/* FOOTER */}
-      <footer className="bg-[#e6e0e9] text-[#1c1c19] py-16 px-4 md:px-8 mt-20 border-t border-gray-200">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
-          
-          {/* Col 1: Brand Info */}
-          <div className="space-y-4">
-            <h3 className="font-serif text-xl font-black text-[#775a19]">Sotelo Gourmet</h3>
-            <p className="text-xs text-[#4e4639] leading-relaxed">
-              Alta Pastelería Artesanal elaborada con los secretos del viejo mundo y la frescura de hoy. Diseñamos experiencias inolvidables para tu mesa.
-            </p>
-            <div className="flex gap-4 items-center pt-2">
-              <a href="#" className="text-[#755e4d] hover:text-[#775a19]" title="Facebook">
-                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                  <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z" />
-                </svg>
-              </a>
-              <a href="#" className="text-[#755e4d] hover:text-[#775a19]" title="Instagram">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
-                </svg>
-              </a>
+       {/* FOOTER */}
+      {location.pathname === '/checkout' ? (
+        <footer className="bg-[#ebe8e3] text-[#4e4639] py-8 px-4 md:px-8 border-t border-[#d1c5b4]/20 font-sans text-xs">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="text-center md:text-left space-y-1">
+              <h3 className="font-serif text-lg font-black text-[#775a19] tracking-tight">Sotelo Gourmet</h3>
+              <p className="text-[11px] text-[#755e4d]">© 2024 Sotelo Gourmet. Arte en Pastelería.</p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-6 text-[#755e4d] font-semibold text-xs">
+              <a href="#" className="hover:text-[#775a19] transition-colors">Aviso Legal</a>
+              <a href="#" className="hover:text-[#775a19] transition-colors">Política de Privacidad</a>
+              <a href="#" className="hover:text-[#775a19] transition-colors">Términos de Servicio</a>
+              <a href="#" className="hover:text-[#775a19] transition-colors">Contacto</a>
             </div>
           </div>
-
-          {/* Col 2: Enlaces */}
-          <div className="space-y-4">
-            <h4 className="text-xs font-bold tracking-widest text-[#775a19] uppercase">Enlaces</h4>
-            <ul className="text-xs space-y-2 text-[#755e4d]">
-              <li><a href="#" className="hover:text-[#775a19] transition-colors">Políticas de Privacidad</a></li>
-              <li><a href="#" className="hover:text-[#775a19] transition-colors">Términos & Condiciones</a></li>
-              <li><a href="#" className="hover:text-[#775a19] transition-colors">Zonas de Envío</a></li>
-              <li><Link to="/catalogo" className="hover:text-[#775a19] text-left transition-colors">Catálogo de Productos</Link></li>
-            </ul>
-          </div>
-
-          {/* Col 3: Horarios */}
-          <div className="space-y-4">
-            <h4 className="text-xs font-bold tracking-widest text-[#775a19] uppercase">Horario de Atención</h4>
-            <div className="text-xs text-[#755e4d] space-y-2">
-              <p className="flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5 text-[#775a19]" />
-                Lunes a Viernes: 9:00 am - 8:00 pm
+        </footer>
+      ) : (
+        <footer className="bg-[#e6e0e9] text-[#1c1c19] py-16 px-4 md:px-8 mt-20 border-t border-gray-200">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
+            
+            {/* Col 1: Brand Info */}
+            <div className="space-y-4">
+              <h3 className="font-serif text-xl font-black text-[#775a19]">Sotelo Gourmet</h3>
+              <p className="text-xs text-[#4e4639] leading-relaxed">
+                Alta Pastelería Artesanal elaborada con los secretos del viejo mundo y la frescura de hoy. Diseñamos experiencias inolvidables para tu mesa.
               </p>
-              <p className="flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5 text-[#775a19]" />
-                Sábado a Domingo: 10:00 am - 6:00 pm
-              </p>
+              <div className="flex gap-4 items-center pt-2">
+                <a href="#" className="text-[#755e4d] hover:text-[#775a19]" title="Facebook">
+                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                    <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z" />
+                  </svg>
+                </a>
+                <a href="#" className="text-[#755e4d] hover:text-[#775a19]" title="Instagram">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+                  </svg>
+                </a>
+              </div>
             </div>
-          </div>
 
-          {/* Col 4: Contacto */}
-          <div className="space-y-4">
-            <h4 className="text-xs font-bold tracking-widest text-[#775a19] uppercase">Ubicación</h4>
-            <div className="text-xs text-[#755e4d] space-y-2">
-              <p className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-[#775a19]" />
-                Miraflores, Lima - Perú
-              </p>
-              <p className="text-[11px] text-gray-500 pt-1">
-                Realizamos entregas a todo Lima Metropolitana con choferes calificados y unidades refrigeradas.
-              </p>
+            {/* Col 2: Enlaces */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold tracking-widest text-[#775a19] uppercase">Enlaces</h4>
+              <ul className="text-xs space-y-2 text-[#755e4d]">
+                <li><a href="#" className="hover:text-[#775a19] transition-colors">Políticas de Privacidad</a></li>
+                <li><a href="#" className="hover:text-[#775a19] transition-colors">Términos & Condiciones</a></li>
+                <li><a href="#" className="hover:text-[#775a19] transition-colors">Zonas de Envío</a></li>
+                <li><Link to="/catalogo" className="hover:text-[#775a19] text-left transition-colors">Catálogo de Productos</Link></li>
+              </ul>
             </div>
+
+            {/* Col 3: Horarios */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold tracking-widest text-[#775a19] uppercase">Horario de Atención</h4>
+              <div className="text-xs text-[#755e4d] space-y-2">
+                <p className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-[#775a19]" />
+                  Lunes a Viernes: 9:00 am - 8:00 pm
+                </p>
+                <p className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-[#775a19]" />
+                  Sábado a Domingo: 10:00 am - 6:00 pm
+                </p>
+              </div>
+            </div>
+
+            {/* Col 4: Contacto */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold tracking-widest text-[#775a19] uppercase">Ubicación</h4>
+              <div className="text-xs text-[#755e4d] space-y-2">
+                <p className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-[#775a19]" />
+                  Miraflores, Lima - Perú
+                </p>
+                <p className="text-[11px] text-gray-500 pt-1">
+                  Realizamos entregas a todo Lima Metropolitana con choferes calificados y unidades refrigeradas.
+                </p>
+              </div>
+            </div>
+
           </div>
 
-        </div>
-
-        <div className="max-w-7xl mx-auto mt-12 pt-6 border-t border-gray-300 text-center text-[10px] text-gray-500 uppercase tracking-widest">
-          &copy; {new Date().getFullYear()} Sotelo Gourmet. Todos los derechos reservados.
-        </div>
-      </footer>
+          <div className="max-w-7xl mx-auto mt-12 pt-6 border-t border-gray-300 text-center text-[10px] text-gray-500 uppercase tracking-widest">
+            &copy; {new Date().getFullYear()} Sotelo Gourmet. Todos los derechos reservados.
+          </div>
+        </footer>
+      )}
 
       {/* SHOPPING CART DRAWER (SLIDING PANEL) */}
       {isCartOpen && (
@@ -700,15 +751,30 @@ export default function App() {
                     </div>
                   </div>
 
-                  <button 
-                    onClick={() => {
-                      setIsCartOpen(false);
-                      setShowCheckoutModal(true);
-                    }}
-                    className="w-full py-4 bg-[#775a19] text-white font-bold rounded-xl hover:bg-[#5e4713] transition-all text-center block text-sm shadow-md"
-                  >
-                    Iniciar Pedido
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        setIsCartOpen(false);
+                        navigate('/checkout');
+                      }}
+                      className="w-1/2 py-4 border border-[#775a19] text-[#775a19] font-bold rounded-xl hover:bg-[#775a19]/5 transition-all text-center block text-sm shadow-xs cursor-pointer font-sans"
+                    >
+                      Resumen Carrito
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setIsCartOpen(false);
+                        if (!user) {
+                          setShowLoginPromptModal(true);
+                        } else {
+                          navigate('/checkout', { state: { step: 2 } });
+                        }
+                      }}
+                      className="w-1/2 py-4 bg-[#775a19] text-white font-bold rounded-xl hover:bg-[#5e4713] transition-all text-center block text-sm shadow-md cursor-pointer font-sans"
+                    >
+                      Iniciar Pedido
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -717,96 +783,51 @@ export default function App() {
         </div>
       )}
 
-      {/* CHECKOUT MODAL (ORDER SETUP SIMULATION) */}
-      {showCheckoutModal && (
+      {/* LOGIN PROMPT MODAL */}
+      {showLoginPromptModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 select-none">
-          <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setShowCheckoutModal(false)} />
+          <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setShowLoginPromptModal(false)} />
           
-          <div className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl space-y-5 border border-gray-100">
-            <div className="flex justify-between items-center pb-2 border-b border-gray-100">
-              <h3 className="font-serif font-bold text-lg text-[#1c1c19]">Detalle del Despacho</h3>
+          <div className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl space-y-6 border border-gray-100 text-center animate-scale-up">
+            <div className="flex justify-end absolute top-4 right-4">
               <button 
-                onClick={() => setShowCheckoutModal(false)}
-                className="p-1 text-gray-400 hover:text-gray-600 rounded-lg"
+                onClick={() => setShowLoginPromptModal(false)}
+                className="p-1 text-gray-400 hover:text-gray-600 rounded-lg focus:outline-none"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handlePlaceOrder} className="space-y-4">
-              {/* Delivery Address */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-500 uppercase block">Dirección de Envío</label>
-                <input 
-                  type="text" 
-                  required
-                  value={checkoutAddress}
-                  onChange={(e) => setCheckoutAddress(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-gray-50 text-sm text-[#1c1c19] rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#775a19]/20"
-                />
+            <div className="space-y-4 pt-4">
+              <div className="w-16 h-16 bg-[#775a19]/10 text-[#775a19] rounded-full flex items-center justify-center mx-auto text-2xl">
+                <User className="w-8 h-8" />
               </div>
-
-              {/* Payment Method Selector */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-500 uppercase block">Método de Pago</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { id: 'tarjeta', label: '💳 Tarjeta' },
-                    { id: 'yape', label: '📱 Yape' },
-                    { id: 'plin', label: '📱 Plin' },
-                    { id: 'efectivo', label: '💵 Efectivo' }
-                  ].map(method => (
-                    <button
-                      key={method.id}
-                      type="button"
-                      onClick={() => setCheckoutPaymentMethod(method.id)}
-                      className={`p-2.5 rounded-xl border text-xs font-semibold text-center cursor-pointer transition-all ${
-                        checkoutPaymentMethod === method.id 
-                          ? 'border-[#775a19] bg-[#775a19]/5 text-[#775a19]' 
-                          : 'border-gray-200 bg-white hover:border-gray-300 text-gray-600'
-                      }`}
-                    >
-                      {method.label}
-                    </button>
-                  ))}
-                </div>
+              
+              <div className="space-y-2">
+                <h3 className="font-serif font-bold text-xl text-[#1c1c19]">Iniciar Sesión Requerido</h3>
+                <p className="text-xs text-gray-500 leading-relaxed px-2">
+                  Para procesar tu pedido artesanal de repostería fina en **Sotelo Gourmet**, por favor inicia sesión o regístrate en nuestra plataforma.
+                </p>
               </div>
+            </div>
 
-              {/* Notes */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-500 uppercase block">Notas del Pedido (Opcional)</label>
-                <textarea 
-                  value={checkoutNotes}
-                  onChange={(e) => setCheckoutNotes(e.target.value)}
-                  placeholder="Instrucciones para la entrega (ej: timbre malogrado, departamento, etc.)"
-                  rows={2}
-                  className="w-full px-3 py-2 bg-gray-50 text-sm text-[#1c1c19] rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#775a19]/20"
-                />
-              </div>
-
-              {/* Calculations review */}
-              <div className="bg-[#fdf9f4] p-4 rounded-2xl text-xs space-y-1 text-gray-500 border border-[#f8dac5]/30">
-                <div className="flex justify-between font-medium">
-                  <span>Subtotal</span>
-                  <span>S/ {cartSubtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between font-medium">
-                  <span>Costo de envío</span>
-                  <span>{shippingCost === 0 ? 'Gratis' : `S/ ${shippingCost.toFixed(2)}`}</span>
-                </div>
-                <div className="flex justify-between font-bold text-sm text-[#1c1c19] pt-2 border-t border-gray-200/50 mt-1">
-                  <span>Monto Total a Pagar</span>
-                  <span className="text-[#775a19]">S/ {cartTotal.toFixed(2)}</span>
-                </div>
-              </div>
-
+            <div className="flex flex-col gap-2 pt-2">
               <button 
-                type="submit"
-                className="w-full py-3.5 bg-[#775a19] text-white font-bold rounded-xl hover:bg-[#5e4713] transition-colors text-center text-sm shadow-md"
+                onClick={() => {
+                  setShowLoginPromptModal(false);
+                  navigate('/login?redirect=/checkout?step=2');
+                }}
+                className="w-full py-3.5 bg-[#775a19] hover:bg-[#5e4713] text-white font-bold rounded-xl transition-all text-center text-sm shadow-md cursor-pointer"
               >
-                Confirmar Pedido & Pagar
+                Iniciar Sesión
               </button>
-            </form>
+              <button 
+                onClick={() => setShowLoginPromptModal(false)}
+                className="w-full py-3 border border-gray-200 text-gray-500 hover:bg-gray-50 font-bold rounded-xl transition-all text-center text-sm cursor-pointer"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         </div>
       )}

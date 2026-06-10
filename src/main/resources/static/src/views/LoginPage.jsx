@@ -35,7 +35,13 @@ export default function LoginPage({ onLoginSuccess }) {
       if (data.rol === 'admin') {
         navigate('/admin/dashboard');
       } else {
-        navigate('/');
+        const params = new URLSearchParams(window.location.search);
+        const redirectPath = params.get('redirect');
+        if (redirectPath) {
+          navigate(redirectPath);
+        } else {
+          navigate('/');
+        }
       }
     } catch (err) {
       setError(err.message);

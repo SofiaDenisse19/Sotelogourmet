@@ -42,7 +42,13 @@ export default function RegisterPage({ onRegisterSuccess }) {
       // Registro y login automático exitoso
       onRegisterSuccess(data);
       alert('¡Registro exitoso! Bienvenido a Sotelo Gourmet.');
-      navigate('/');
+      const params = new URLSearchParams(window.location.search);
+      const redirectPath = params.get('redirect');
+      if (redirectPath) {
+        navigate(redirectPath);
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError(err.message);
     } finally {

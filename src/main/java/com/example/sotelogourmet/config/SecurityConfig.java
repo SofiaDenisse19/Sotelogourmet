@@ -81,7 +81,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/admin/**").hasRole("admin")
                 .requestMatchers(
                     "/", "/catalogo", "/producto/**", "/favoritos", "/login", "/register",
-                    "/admin/**",
+                    "/admin/**", "/checkout",
                     "/api/auth/**", "/api/productos", "/api/categorias",
                     "/dist/**", "/assets/**", "/*.svg", "/*.ico", "/index.html", "/favicon.svg"
                 ).permitAll()
